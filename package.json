@@ -1,0 +1,13 @@
+{
+  "name": "typeshape-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static server and multiplayer matchmaker for Type Shape. No dependencies.",
+  "main": "serve.js",
+  "scripts": {
+    "start": "node serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
