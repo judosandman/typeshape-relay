@@ -29,7 +29,7 @@ const server = http.createServer((req, res) => {
   if (!file.startsWith(ROOT)) { res.writeHead(403).end("forbidden"); return; }
   fs.readFile(file, (err, buf) => {
     if (err) {
-      if (url === "/") { res.writeHead(200).end("Type Shape relay is running."); return; }
+      if (url === "/") { res.writeHead(200).end("Type Shape relay is running. build 2"); return; }
       res.writeHead(404).end("not found");
       return;
     }
@@ -73,7 +73,10 @@ server.on("upgrade", (req, socket) => {
   socket.write(
     "HTTP/1.1 101 Switching Protocols\r\n" +
     "Upgrade: websocket\r\nConnection: Upgrade\r\n" +
-    "Sec-WebSocket-Accept: " + accept + "\r\n\r\n");
+    "Sec-WebSocket-Accept: " + accept + "\r\n" +
+    // TEMPORARY: reports the key this process actually received, to find out
+    // whether anything in front of it re-originates the handshake.
+    "X-Relay-Key-Seen: " + key + "\r\n\r\n");
   socket.setNoDelay(true);
 
   const peer = new Peer(socket);
