@@ -1,7 +1,13 @@
 # Type Shape relay
 
 The multiplayer matchmaker for [Type Shape](https://studiojudo.com/bluenotes).
-No dependencies — it is one file of Node standard library.
+One file, one dependency (`ws`).
+
+The WebSocket handling used to be hand-rolled, which worked locally and failed
+behind Render's proxy: the proxy re-originates the handshake with a key of its
+own and then forwards the origin's `Sec-WebSocket-Accept` unchanged, so the
+browser sees an accept computed from a key it never sent and refuses the
+connection. `ws` is what the platform expects to be talking to.
 
 The game itself is hosted on GoDaddy, which serves static files but cannot run
 a WebSocket server. This is the piece that has to live somewhere that can. It
