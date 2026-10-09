@@ -53,6 +53,8 @@ class Peer {
     this.socket = socket;
     this.name = "PLAYER";
     this.partner = null;
+    /** The game's protocol version, from `find`. Older pages send none. */
+    this.version = 0;
   }
   get alive() { return this.socket.readyState === this.socket.OPEN; }
   send(obj) {
@@ -66,6 +68,9 @@ wss.on("connection", (socket) => {
   socket.on("message", (data) => {
     let msg;
     try { msg = JSON.parse(data.toString()); } catch (e) { return; }
+    // `null`, a number or a string parses fine and has no fields: reading
+    // `msg.t` on null threw, and an exception here takes the whole relay down.
+    if (!msg || typeof msg !== "object" || Array.isArray(msg)) return;
     handle(peer, msg);
   });
   socket.on("close", () => { unqueue(peer); partWays(peer, "left"); });
@@ -75,13 +80,17 @@ wss.on("connection", (socket) => {
 function handle(peer, msg) {
   if (msg.t === "find") {
     peer.name = String(msg.name || "PLAYER").slice(0, 14).toUpperCase() || "PLAYER";
+    peer.version = Number.isInteger(msg.v) ? msg.v : 0;
     unqueue(peer);
     partWays(peer, "left");
-    // Pair with whoever has been waiting longest, so nobody starves.
+    // Pair with whoever has been waiting longest on the same version, so nobody
+    // starves and two generations of the game - which cannot play each other -
+    // never meet. Anyone left waiting on another version stays in the queue.
     let other = null;
-    while (waiting.length) {
-      const candidate = waiting.shift();
-      if (candidate.alive && candidate !== peer) { other = candidate; break; }
+    for (let i = 0; i < waiting.length; i++) {
+      const candidate = waiting[i];
+      if (!candidate.alive) { waiting.splice(i--, 1); continue; }
+      if (candidate !== peer && candidate.version === peer.version) { waiting.splice(i, 1); other = candidate; break; }
     }
     if (other) pair(other, peer);
     else { waiting.push(peer); peer.send({ t: "searching" }); }
@@ -102,7 +111,7 @@ function pair(a, b) {
   const seed = (Math.random() * 0xffffffff) >>> 0;
   a.send({ t: "start", seed: seed, host: true, opponent: b.name });
   b.send({ t: "start", seed: seed, host: false, opponent: a.name });
-  console.log("paired " + a.name + " (host) with " + b.name);
+  console.log("paired " + a.name + " (host) with " + b.name + " on v" + a.version);
 }
 
 function partWays(peer, why) {
